@@ -1,7 +1,7 @@
 from django.conf.urls import url
 from django.contrib import messages
 from django.contrib.admin.utils import unquote
-from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed
+from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -61,9 +61,11 @@ def _unlock_view(self, request, object_id):
         return self._get_obj_does_not_exist_redirect(
             request, self.model._meta, object_id)
 
+    payload = {}
     # Raise 404 if not locked
     if version.state != constants.DRAFT:
-        raise Http404
+        #raise Http404
+        payload.update({"status": 404})
 
     # Check that the user has unlock permission
     if not request.user.has_perm('djangocms_version_locking.delete_versionlock'):
@@ -71,15 +73,19 @@ def _unlock_view(self, request, object_id):
 
     # Unlock the version
     remove_version_lock(version)
+
     # Display message
-    messages.success(request, _("Version unlocked"))
+    # messages.success(request, _("Version unlocked"))
+    payload.update({"message": _("Version unlocked")})
 
     # Send an email notification
     notify_version_author_version_unlocked(version, request.user)
 
     # Redirect
-    url = version_list_url(version.content)
-    return redirect(url)
+    # url = version_list_url(version.content)
+    # return redirect(url)
+    
+    return JsonResponse(payload)
 
 
 admin.VersionAdmin._unlock_view = _unlock_view
