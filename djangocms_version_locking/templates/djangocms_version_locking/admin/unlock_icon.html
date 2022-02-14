@@ -1,9 +1,66 @@
 {% load static i18n %}
 
-{% if disabled %}
-<a class="btn cms-versioning-action-btn inactive" title="{% trans "Unlock" %}">
+{% if not disabled %}
+<a id="unlock-link" class="btn cms-versioning-action-btn " title="{% trans "Unlock" %}" href="{{ unlock_url }}" data-href="{{ unlock_url }}">
+        <img src="{% static 'djangocms_version_locking/svg/unlock.svg' %}">
+    </a>
+
+    {# Script to handle unlock async functionality: #}
+    <script type="text/javascript">
+        let unlockLink = document.getElementById('unlock-link');
+        let unlockUrl = unlockLink.getAttribute('href');
+        //let opts = {once: true, capture: true, passive: false};
+        
+        function handleUnlock(e){
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            //unlockLink.removeAttribute('href');
+
+            let csrfToken = document.cookie.match(/csrftoken=([^;]*);?/)[1];
+            
+            fetch(unlockUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json;charset=utf-8',
+                },
+                redirect: 'error',
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(payload => {
+
+                let msg = document.createElement('li');
+                msg.className = 'success';
+                msg.innerHTML = payload.message;
+                
+                // Check if Django messagelist already visible on page,
+                // if so append new message, otherwise create:
+                let msglist = document.getElementsByClassName('messagelist')[0];
+                if(msglist !== undefined){
+                    msglist.append(msg);
+                }else{
+                    msglist = document.createElement('ul');
+                    msglist.className = 'messagelist';
+                    msglist.append(msg);
+
+                    // Insert messagelist before main content div:
+                    document.getElementById('content').before(msglist);
+                }
+            })
+            .catch(err => {
+                console.log(`Error: Unfortunately there was an error: ${err}`)
+            });
+
+        }
+        unlockLink.addEventListener('click', handleUnlock);
+    
+    </script>
+
 {% else %}
-<a class="btn cms-versioning-action-btn js-versioning-action" href="{{ unlock_url }}" title="{% trans "Unlock" %}">
+    <a class="btn cms-versioning-action-btn inactive" title="{% trans "Unlock" %}">
+        <img src="{% static 'djangocms_version_locking/svg/unlock.svg' %}">
+    </a>
 {% endif %}
-    <img src="{% static 'djangocms_version_locking/svg/unlock.svg' %}">
-</a>
+
